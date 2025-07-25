@@ -1,0 +1,136 @@
+# config/config.yaml - Main configuration file
+
+# Snowflake connection settings
+snowflake:
+  source:
+    user: "SOURCE_USER"
+    password: "SOURCE_PASSWORD"
+    account: "source_account.snowflakecomputing.com"
+    warehouse: "COMPUTE_WH"
+    database: "PROD_DB"
+    schema: "PUBLIC"
+    role: "ANALYST_ROLE"
+    timeout: 300
+  
+  target:
+    user: "TARGET_USER"
+    password: "TARGET_PASSWORD"
+    account: "target_account.snowflakecomputing.com"
+    warehouse: "COMPUTE_WH"
+    database: "PROD_DB"
+    schema: "PUBLIC"
+    role: "ANALYST_ROLE"
+    timeout: 300
+
+# DuckDB settings
+duckdb:
+  memory_limit: "8GB"
+  temp_directory: "./tmp"
+
+# Validation settings
+validation:
+  parallel_queries: 1  # Sequential processing
+  default_timeout: 300
+  default_retry_attempts: 3
+  chunk_size: 100000
+  sample_size: 10000
+
+# Output settings
+output:
+  base_directory: "./output"
+  keep_exports: true
+  report_formats: ["json", "html"]
+  log_level: "INFO"
+
+# Query definitions
+queries:
+  query_001:
+    name: "customer_count_validation"
+    category: "data_volume"
+    priority: "high"
+    timeout_seconds: 300
+    retry_attempts: 3
+    sql: |
+      SELECT COUNT(*) as total_customers 
+      FROM customers 
+      WHERE created_date >= '2024-01-01'
+    comparison_type: "exact_match"
+    tolerance: 0
+    required_for_migration: true
+    dependencies: []
+
+  query_002:
+    name: "customer_table_schema"
+    category: "schema_validation"
+    priority: "high"
+    timeout_seconds: 60
+    retry_attempts: 2
+    sql: |
+      SELECT column_name, data_type, is_nullable
+      FROM information_schema.columns 
+      WHERE table_name = 'CUSTOMERS'
+      ORDER BY ordinal_position
+    comparison_type: "exact_match"
+    required_for_migration: true
+
+  query_003:
+    name: "order_details_comparison"
+    category: "data_content"
+    priority: "high"
+    timeout_seconds: 1800
+    retry_attempts: 3
+    sql: |
+      SELECT order_id, customer_id, order_date, total_amount
+      FROM orders 
+      WHERE order_date >= '2024-01-01'
+      ORDER BY order_id
+    comparison_type: "reladiff"
+    key_columns: ["order_id"]
+    ignore_columns: ["created_timestamp", "modified_timestamp"]
+    sample_size: 10000
+    full_validation: true
+    required_for_migration: true
+
+  query_004:
+    name: "monthly_sales_aggregation"
+    category: "business_logic"
+    priority: "medium"
+    timeout_seconds: 600
+    sql: |
+      SELECT 
+        DATE_TRUNC('month', order_date) as month,
+        COUNT(*) as order_count,
+        SUM(total_amount) as total_sales,
+        AVG(total_amount) as avg_order_value
+      FROM orders 
+      WHERE order_date >= '2024-01-01'
+      GROUP BY DATE_TRUNC('month', order_date)
+      ORDER BY month
+    comparison_type: "tolerance"
+    tolerance: 0.01
+    required_for_migration: false
+
+  query_005:
+    name: "customer_order_history"
+    category: "data_content"
+    priority: "medium"
+    timeout_seconds: 900
+    sql: |
+      SELECT 
+        c.customer_id,
+        c.customer_name,
+        c.email,
+        COUNT(o.order_id) as total_orders,
+        MAX(o.order_date) as last_order_date,
+        SUM(o.total_amount) as lifetime_value
+      FROM customers c
+      LEFT JOIN orders o ON c.customer_id = o.customer_id
+      WHERE c.created_date >= '2024-01-01'
+      GROUP BY c.customer_id, c.customer_name, c.email
+      ORDER BY c.customer_id
+    comparison_type: "reladiff"
+    key_columns: ["customer_id"]
+    ignore_columns: []
+    sample_size: 5000
+
+

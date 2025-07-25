@@ -1,0 +1,25 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  snowflake-validator:
+    build: .
+    container_name: snowflake-validator
+    volumes:
+      - ./config:/app/config:ro
+      - ./output:/app/output
+      - ./queries:/app/queries:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+    # Override command for different operations
+    # command: ["python", "snowflake_validator.py", "--config", "/app/config/production.yaml"]
+    
+  duckdb-viewer:
+    image: davidgasquez/duckdb:latest
+    container_name: duckdb-viewer
+    volumes:
+      - ./output:/data
+    ports:
+      - "8080:8080"
+    command: ["duckdb", "/data/validation.duckdb"]

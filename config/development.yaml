@@ -1,0 +1,43 @@
+# config/development.yaml - Development environment config
+
+base_config: "config.yaml"
+
+snowflake:
+  source:
+    account: "dev_source.snowflakecomputing.com"
+    database: "DEV_DB"
+    warehouse: "SMALL_WH"
+  
+  target:
+    account: "dev_target.snowflakecomputing.com"
+    database: "DEV_DB"
+    warehouse: "SMALL_WH"
+
+validation:
+  sample_size: 1000      # Smaller samples for dev testing
+
+# Override with limited queries for development
+queries:
+  query_001:
+    name: "dev_customer_count"
+    category: "data_volume"
+    priority: "high"
+    timeout_seconds: 60
+    sql: |
+      SELECT COUNT(*) as total_customers 
+      FROM customers 
+      LIMIT 1000
+    comparison_type: "exact_match"
+
+  query_002:
+    name: "dev_basic_schema_check"
+    category: "schema_validation"
+    priority: "high"
+    timeout_seconds: 30
+    sql: |
+      SELECT column_name, data_type
+      FROM information_schema.columns 
+      WHERE table_name = 'CUSTOMERS'
+      ORDER BY ordinal_position
+      LIMIT 10
+    comparison_type: "exact_match"

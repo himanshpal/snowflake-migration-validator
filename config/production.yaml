@@ -1,0 +1,22 @@
+# config/production.yaml - Production environment config
+
+# Inherit from base config but override specific settings
+base_config: "config.yaml"
+
+snowflake:
+  source:
+    account: "prod_source.snowflakecomputing.com"
+    database: "PRODUCTION_DB"
+    warehouse: "LARGE_WH"
+  
+  target:
+    account: "prod_target.snowflakecomputing.com"
+    database: "PRODUCTION_DB"
+    warehouse: "LARGE_WH"
+
+validation:
+  default_timeout: 1800  # Longer timeouts for production
+  chunk_size: 1000000    # Larger chunks for production
+
+output:
+  log_level: "WARN"      # Less verbose logging in production
